@@ -32,6 +32,17 @@ Heartbeat
 | where LastSeen < ago(10m)
 ```
 
+Pour des resource logs Storage envoyés vers Log Analytics, les tables peuvent inclure `StorageBlobLogs` ou `StorageFileLogs` selon les catégories et le mode de collecte activés. Exemple de recherche des opérations Blob récentes :
+
+```kusto
+StorageBlobLogs
+| where TimeGenerated > ago(24h)
+| summarize Operations = count() by OperationName, StatusText
+| order by Operations desc
+```
+
+Le nom et la disponibilité des tables dépendent du schéma de diagnostic choisi ; vérifier la table proposée dans le workspace avant d'utiliser la requête.
+
 Réflexe : metrics pour un seuil immédiat ; logs/KQL pour corréler et analyser l'historique.
 
 Une `metric alert` évalue généralement des données de plateforme presque en temps réel. Une `log alert` dépend de l'ingestion des logs et de l'exécution planifiée de la requête KQL ; elle peut donc déclencher plus tard.

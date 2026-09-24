@@ -1,6 +1,6 @@
 # Module 01 - Manage Azure identities and governance
 
-[Retour au README](../README.md)
+[Retour au README](../README.md) | [Module suivant : Storage](02-storage.md)
 
 ## Microsoft Entra ID
 
@@ -29,6 +29,32 @@
 | Élévation temporaire avec approbation et journalisation | `Privileged Identity Management (PIM)`, généralement P2 |
 
 `Microsoft Entra ID` n'a pas d'OU ni de GPO. Pour la configuration des appareils, utiliser notamment `Microsoft Intune` et `Conditional Access`.
+
+### Éditions et licences
+
+| Édition | Fonctions à retenir pour l'AZ-104 |
+|---|---|
+| `Free` | Identités cloud, SSO de base et fonctions fondamentales |
+| `P1` | `Conditional Access`, groupes dynamiques et SSPR pour les utilisateurs |
+| `P2` | P1 + `Identity Protection` et `Privileged Identity Management (PIM)` |
+
+Les fonctionnalités peuvent aussi être incluses dans des suites Microsoft 365 ou Enterprise Mobility + Security. Vérifier le plan exact avant de conclure qu'une fonction est disponible.
+
+### Utilisateurs, groupes et appareils
+
+- Une identité peut être cloud-only, synchronisée depuis AD DS ou `Guest`/B2B pour un utilisateur externe.
+- Un `Security group` contrôle l'accès ; un `Microsoft 365 group` fournit des fonctions de collaboration comme la boîte aux lettres, le calendrier et SharePoint.
+- `Assigned membership` est gérée manuellement ; `Dynamic membership` évalue des attributs et nécessite généralement P1.
+- `Group-based licensing` attribue et retire automatiquement les licences. Renseigner l'`Usage location` avant l'attribution et compter les membres uniques lorsqu'un utilisateur appartient à plusieurs groupes licenciés.
+- `Custom security attributes` sont des paires clé-valeur propres à l'organisation pour classifier des objets et affiner certains contrôles.
+- `Microsoft Entra registered` correspond typiquement à un appareil BYOD ; `Microsoft Entra joined` à un appareil cloud-only ; `Microsoft Entra hybrid joined` conserve la jonction AD DS et ajoute l'identité Entra. `Microsoft Intune` applique les stratégies MDM et de conformité.
+
+### Synchronisation hybride
+
+- `Microsoft Entra Cloud Sync` utilise un agent léger local et un service de provisioning géré dans le cloud. Il convient notamment aux forêts multiples ou déconnectées.
+- `Microsoft Entra Connect Sync` reste adapté aux scénarios nécessitant davantage de fonctionnalités de synchronisation et de transformation locales. Cloud Sync n'est pas un remplacement universel.
+- `SCIM 2.0` sert surtout au provisioning d'applications compatibles ; une source RH sans endpoint SCIM peut utiliser `API-driven inbound provisioning`.
+- Le `password writeback` et SSPR nécessitent la configuration adaptée de la synchronisation et du connecteur local.
 
 Pour le provisioning, distinguer `SCIM 2.0`, `Microsoft Entra provisioning service`, `API-driven inbound provisioning`, `Dynamic groups` et `Group-based licensing`. Pour chaque membre unique d'un groupe sous licence, une licence disponible doit être possédée ; 1 000 membres uniques nécessitent donc au moins 1 000 licences correspondantes. Vérifier les éditions et licences exactes dans la documentation actuelle.
 
@@ -71,6 +97,8 @@ Un rôle à un scope parent est hérité par les enfants. Les permissions sont a
 
 ## Governance, subscriptions et architecture
 
+- Hiérarchie de gouvernance : `Tenant root group -> Management groups -> Subscriptions -> Resource groups -> Resources`.
+- Un tenant possède un seul `Tenant root group`. Les management groups peuvent être imbriqués jusqu'à six niveaux de profondeur, hors racine et subscription, et les assignments RBAC/Policy héritent vers les descendants.
 - Un `resource group` regroupe des ressources ayant un cycle de vie commun. Une ressource n'appartient qu'à un resource group et celui-ci ne peut pas être renommé.
 - Un resource group peut contenir des ressources de plusieurs régions ; ses métadonnées sont stockées dans une région.
 - Supprimer un resource group supprime ses ressources.
@@ -107,6 +135,8 @@ Pour `development`, `test` et `production`, utiliser des resource groups distinc
 
 Une `remediation task` traite les ressources existantes pour `Modify` et `DeployIfNotExists`, si l'identité managée de l'assignment possède les permissions nécessaires. Une `policy exemption` documente une exception ciblée avec les catégories `Waiver` ou `Mitigated`. L'état `Conflicting` indique des assignments contradictoires.
 
+Une ressource est évaluée lors de sa création ou mise à jour, lors d'une nouvelle assignment ou modification de policy, puis lors du cycle périodique d'environ 24 heures. Une policy `Deny` peut bloquer une requête même si l'appelant dispose d'un rôle `Owner` ; RBAC et Policy répondent à des questions différentes.
+
 Une `Policy assignment` associe la policy ou l'initiative à un scope et une `Exemption` documente une exception ciblée. Azure Policy agit sur le `control plane` pour évaluer l'état des ressources et n'est pas un mécanisme de filtrage des données applicatives.
 
 **RBAC vs Policy :** RBAC répond à « qui peut agir ? » ; Policy répond à « quelles configurations sont autorisées ou conformes ? ». Une policy `Deny` peut bloquer une création même si l'utilisateur est `Owner`.
@@ -119,12 +149,14 @@ SSPR permet à l'utilisateur de réinitialiser son mot de passe sans help desk. 
 
 - Déploiement : `None`, `Selected` ou `All`.
 - `Authentication methods` et `Number of methods required to reset` sont configurables ; l'utilisateur doit avoir enregistré le nombre minimal de méthodes.
+- Les méthodes peuvent inclure `Microsoft Authenticator`, code ou notification mobile, `Email OTP`, téléphone et questions de sécurité selon la policy. Configurer une ou deux méthodes requises ; éviter de faire des questions de sécurité ou du SMS le seul facteur.
 - Les comptes administrateurs utilisent une authentification renforcée, généralement deux méthodes.
 - `Security questions` sont moins recommandées ; SMS présente des risques de fraude.
 - `CAPTCHA` vérifie que la demande vient d'un humain.
 - `Password writeback` renvoie le changement vers l'AD on-premises.
 - `Notify all admins when other admins reset their password` aide à détecter une activité suspecte.
 - Le rôle minimal de configuration est à vérifier dans la documentation Entra actuelle ; `Authentication Policy Administrator` est le rôle à rechercher selon la configuration.
+- SSPR concerne le reset d'un utilisateur qui ne peut plus se connecter ; un utilisateur déjà connecté peut changer son mot de passe sans utiliser SSPR. Pour les identités synchronisées, le `password writeback` permet de répercuter le nouveau mot de passe vers AD DS.
 
 ## Lab
 
@@ -138,6 +170,9 @@ SSPR permet à l'utilisateur de réinitialiser son mot de passe sans help desk. 
 ## Ressources
 
 - [Microsoft Entra overview](https://learn.microsoft.com/en-us/entra/fundamentals/whatis)
+- [Microsoft Entra Cloud Sync](https://learn.microsoft.com/en-us/entra/identity/hybrid/cloud-sync/what-is-cloud-sync)
+- [Microsoft Entra licensing](https://learn.microsoft.com/en-us/entra/fundamentals/licensing)
+- [Azure management groups](https://learn.microsoft.com/en-us/azure/governance/management-groups/overview)
 - [Azure RBAC overview](https://learn.microsoft.com/en-us/azure/role-based-access-control/overview)
 - [Azure Policy overview](https://learn.microsoft.com/en-us/azure/governance/policy/overview)
 - [SSPR deep dive](https://learn.microsoft.com/en-us/entra/identity/authentication/concept-sspr-howitworks)
