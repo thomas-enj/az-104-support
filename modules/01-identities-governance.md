@@ -145,7 +145,7 @@ Pour tester une policy en production sans bloquer les déploiements, utiliser `e
 
 ## SSPR
 
-SSPR permet à l'utilisateur de réinitialiser son mot de passe sans help desk. Distinguer le changement par un utilisateur `signed-in` du reset par un utilisateur `signed-out`.
+SSPR (Self-Service Password Reset) permet à l'utilisateur de réinitialiser son mot de passe sans help desk. Distinguer le changement par un utilisateur `signed-in` du reset par un utilisateur `signed-out`.
 
 - Déploiement : `None`, `Selected` ou `All`.
 - `Authentication methods` et `Number of methods required to reset` sont configurables ; l'utilisateur doit avoir enregistré le nombre minimal de méthodes.
