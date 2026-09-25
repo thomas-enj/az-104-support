@@ -256,3 +256,5 @@ SSPR (Self-Service Password Reset) permet à l'utilisateur de réinitialiser son
 - [Azure RBAC overview](https://learn.microsoft.com/en-us/azure/role-based-access-control/overview)
 - [Azure Policy overview](https://learn.microsoft.com/en-us/azure/governance/policy/overview)
 - [SSPR deep dive](https://learn.microsoft.com/en-us/entra/identity/authentication/concept-sspr-howitworks)
+
+[Retour au README](../README.md) | [Module suivant : Storage](02-storage.md)

@@ -1,6 +1,6 @@
 # Module 02 - Implement and manage storage
 
-[Retour au README](../README.md) | [Module suivant : Compute](03-compute.md)
+[Retour au README](../README.md) | [Module précédent : Identities and governance](01-identities-governance.md) | [Module suivant : Compute](03-compute.md)
 
 ## Vue d’ensemble
 Ce module traite les services de stockage Azure et les décisions de conception associées. L’objectif est de choisir le bon type de compte, la bonne redondance, le bon niveau d’accès et le bon mécanisme de sécurisation selon le besoin métier.
@@ -271,3 +271,5 @@ azcopy copy "<source>" "https://<account>.blob.core.windows.net/<container>?<SAS
 - [Azure Files documentation](https://learn.microsoft.com/en-us/azure/storage/files/)
 - [Azure Files backup](https://learn.microsoft.com/en-us/azure/backup/azure-file-share-backup-overview)
 - [Azure Data Lake Storage vaulted backup](https://learn.microsoft.com/en-us/azure/backup/azure-data-lake-storage-backup-overview)
+
+[Retour au README](../README.md) | [Module précédent : Identities and governance](01-identities-governance.md) | [Module suivant : Compute](03-compute.md)

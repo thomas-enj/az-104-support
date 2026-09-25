@@ -127,3 +127,5 @@ ASR réplique continuellement les VM vers une région ou un site secondaire. Un 
 - [Restore Azure VMs with Azure Backup](https://learn.microsoft.com/en-us/azure/backup/backup-azure-arm-restore-vms)
 - [Azure Site Recovery overview](https://learn.microsoft.com/en-us/azure/site-recovery/site-recovery-overview)
 - [KQL documentation](https://learn.microsoft.com/en-us/kusto/query/)
+
+[Retour au README](../README.md) | [Module précédent : Virtual networking](04-virtual-networking.md)

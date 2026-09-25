@@ -156,3 +156,5 @@ Un `service endpoint` conserve l'accès au endpoint public du service et le rest
 - [Traffic Analytics](https://learn.microsoft.com/en-us/azure/network-watcher/traffic-analytics)
 - [NSG flow logs and retirement](https://learn.microsoft.com/en-us/azure/network-watcher/nsg-flow-logs-overview)
 - [Virtual network flow logs](https://learn.microsoft.com/en-us/azure/network-watcher/vnet-flow-logs-overview)
+
+[Retour au README](../README.md) | [Module précédent : Compute](03-compute.md) | [Module suivant : Monitoring](05-monitoring-recovery.md)

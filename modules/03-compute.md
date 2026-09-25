@@ -1,6 +1,6 @@
 # Module 03 - Deploy and manage Azure compute resources
 
-[Retour au README](../README.md) | [Module suivant : Virtual networking](04-virtual-networking.md)
+[Retour au README](../README.md) | [Module précédent : Storage](02-storage.md) | [Module suivant : Virtual networking](04-virtual-networking.md)
 
 ## Vue d’ensemble
 Ce module traite le choix et la mise en œuvre des ressources de calcul Azure. Le point clé est de faire correspondre le service à la charge de travail, puis de dimensionner, sécuriser et surveiller la ressource correctement.
@@ -252,3 +252,5 @@ Un `App Service plan` définit la région, l'OS, le tier, la taille et le nombre
 - [Azure App Service](https://learn.microsoft.com/en-us/azure/app-service/)
 - [App Service backup](https://learn.microsoft.com/en-us/azure/app-service/manage-backup)
 - [Azure Container Registry SKUs](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-skus)
+
+[Retour au README](../README.md) | [Module précédent : Storage](02-storage.md) | [Module suivant : Virtual networking](04-virtual-networking.md)
