@@ -2,6 +2,15 @@
 
 [Retour au README](../README.md) | [Module suivant : Compute](03-compute.md)
 
+## Vue d’ensemble
+Ce module traite les services de stockage Azure et les décisions de conception associées. L’objectif est de choisir le bon type de compte, la bonne redondance, le bon niveau d’accès et le bon mécanisme de sécurisation selon le besoin métier.
+
+## Plan du module
+1. Comptes de stockage, types et redondance
+2. Accès aux données et mécanismes de sécurité
+3. Blobs, lifecycle et protection des données
+4. Azure Files, Data Lake et File Sync
+
 ## Storage accounts
 
 Pour la majorité des scénarios, choisir `StorageV2 (general-purpose v2)`. Relier chaque choix au besoin :
@@ -41,6 +50,10 @@ Ne pas confondre `redundancy` et `backup` : la redondance protège disponibilit�
 
 `LRS` protège surtout contre les pannes matérielles locales. `ZRS` conserve les écritures dans plusieurs zones de la région primaire. `GRS` et `GZRS` répliquent de façon asynchrone vers une région secondaire ; le RPO n'est donc pas nul. `RA-GRS` et `RA-GZRS` ajoutent la lecture depuis le secondaire, mais ne rendent pas automatiquement les écritures disponibles dans cette région. Les options et les régions compatibles dépendent du type de compte.
 
+La redondance répond à un besoin de disponibilité et de durabilité ; elle ne remplace ni `Azure Backup` ni une stratégie de restauration. Si deux workloads ont des exigences de résilience différentes, les placer dans des comptes distincts car la redondance est un réglage du compte.
+
+Avec `GRS` ou `GZRS`, un `account failover` peut promouvoir la région secondaire en région primaire lors d'une panne régionale. Cette opération peut entraîner une perte des écritures encore en attente de réplication ; le compte utilise alors une redondance locale dans la nouvelle région primaire. `RA-GRS` et `RA-GZRS` permettent la lecture secondaire avant un failover, mais pas l'écriture normale dans cette région.
+
 Endpoint Blob standard : `https://<storage-account>.blob.core.windows.net`. Les endpoints diffèrent pour Files, Queue, Table et Data Lake.
 
 ### Choisir le bon service Storage
@@ -67,12 +80,15 @@ Ordre de préférence général : identité Microsoft Entra ID avec permissions 
 
 **Piège :** `Storage Account Contributor` gère le compte mais ne donne pas nécessairement la lecture des blobs.
 
+Pour un accès applicatif, préférer une identité managée avec un rôle data plane au scope minimal. Les `access keys` et les SAS signées par une clé de compte doivent rester des solutions limitées et faire l'objet d'une rotation.
+
 ### SAS et clés
 
 - `Service SAS` est adaptée à un service ou container précis ; `User delegation SAS` est signée avec des credentials Microsoft Entra et convient à Blob/Data Lake ; `Account SAS` couvre les services autorisés du compte.
 - Dans une SAS, `sp` représente les permissions, `st` le début, `se` l'expiration, `sip` la plage IP, `spr` le protocole et `sv` la version.
 - Utiliser HTTPS pour créer et distribuer une SAS, une durée courte et le moindre privilège. Un léger décalage d'horloge peut rendre une SAS « not yet valid » ; omettre le début ou le placer quelques minutes dans le passé.
 - Une `Stored access policy` permet de révoquer les permissions d'une service SAS sans régénérer les access keys.
+- Une `User delegation SAS` est préférable à une SAS signée par une clé de compte lorsque le client peut s'authentifier avec Microsoft Entra. Pour une SAS de compte ou de service signée avec une access key, planifier la rotation des clés et limiter la durée de validité.
 - Pour une opération d'écriture très risquée, un middle-tier qui authentifie, valide et audite peut être préférable à une SAS directe.
 - Les deux storage access keys doivent être gérées dans `Azure Key Vault` et régulièrement régénérées, avec rotation automatisée si possible.
 
@@ -87,6 +103,7 @@ Une `system-assigned managed identity` suit le cycle de vie de sa ressource ; un
 Hiérarchie : `Storage account > Container > Blob`. Types : `Block blob`, `Append blob`, `Page blob`.
 
 - `Hot` : accès fréquent ; `Cool` et `Cold` : accès moins fréquent ; `Archive` : hors ligne et réhydratation avant lecture.
+- `Smart` : pour un compte GPv2 avec redondance zonale lorsque le profil d'accès est incertain ; Azure déplace automatiquement les block blobs entre `Hot`, `Cool` et `Cold`. `Smart` ne prend pas en charge `Archive`, les comptes Premium, les comptes GPv1 ni les blobs `Append`/`Page`.
 - `Soft delete` protège contre suppression accidentelle.
 - `Blob versioning` conserve les versions ; `Container soft delete` protège les containers supprimés.
 - `Snapshots` fournissent des versions ponctuelles.
@@ -105,6 +122,10 @@ Hiérarchie : `Storage account > Container > Blob`. Types : `Block blob`, `Appen
 | `Archive` | Rare, hors ligne | 180 jours | Réhydratation avant lecture, jusqu'à plusieurs heures |
 
 Les tiers d'accès s'appliquent aux `Block blobs`. `Archive` est pris en charge uniquement avec `LRS`, `GRS` ou `RA-GRS` ; il n'est pas compatible avec `ZRS`, `GZRS` ou `RA-GZRS`. Une suppression, réécriture ou sortie anticipée d'un tier froid peut entraîner une pénalité proratisée.
+
+`Archive` est hors ligne : le blob doit être réhydraté avant sa lecture. `Soft delete`, `versioning`, `snapshots`, `object replication` et Backup répondent à des problèmes différents ; aucun de ces mécanismes ne doit être présenté comme un substitut universel aux autres.
+
+La réhydratation standard d'un blob Archive peut prendre plusieurs heures, parfois jusqu'à environ 15 heures ; la priorité élevée réduit ce délai selon la capacité disponible et les conditions du service. Les tiers froids imposent une durée minimale de conservation : une suppression ou une sortie anticipée peut donc générer des frais pour la période restante. Vérifier les durées et les tarifs actuels avant de mémoriser une valeur exacte.
 
 ### Lifecycle management
 
@@ -142,7 +163,12 @@ L'immuabilité protège des blobs contre la modification et la suppression penda
 
 ### Blob backup et restauration
 
-Selon le workload et les fonctionnalités disponibles dans la région, `Azure Backup for blobs` utilise un `Backup vault` et fournit des points de restauration gouvernés. Ne pas le confondre avec `soft delete` (fenêtre contre une suppression), `versioning` (versions conservées), `snapshot` (copie ponctuelle) ou `object replication` (copie vers un autre compte). Vérifier les prérequis de redondance et de restauration dans la documentation du service avant de choisir cette option ; pour un besoin de reprise régionale de l'application, revoir plutôt `Azure Site Recovery` dans le module 05.
+`Azure Backup for Blobs` prend désormais deux formes à distinguer :
+
+- `Operational backup` : protection locale continue fondée sur le point-in-time restore, le soft delete, le change feed et le versioning ; la restauration se fait dans le compte source.
+- `Vaulted backup` : copie hors site vers un `Backup vault`, avec planification, rétention longue et restauration vers un autre compte Storage.
+
+Ces mécanismes protègent les block blobs, mais ne remplacent pas la redondance du compte. Ne pas confondre `soft delete` (fenêtre contre une suppression), `versioning` (versions conservées), `snapshot` (copie ponctuelle), `object replication` (copie entre comptes) et Backup (points de restauration gouvernés). Pour un besoin de reprise régionale d'une application et de ses VM, revoir plutôt `Azure Site Recovery` dans le module 05.
 
 ### Encryption et sécurité avancée
 
@@ -153,6 +179,17 @@ Selon le workload et les fonctionnalités disponibles dans la région, `Azure Ba
 - `Infrastructure encryption` ajoute une seconde couche de chiffrement avec un autre algorithme et une autre clé, en complément de SSE.
 - `Storage Insights` fournit l'historique de performance, capacité, disponibilité, metrics et logs. `Microsoft Defender for Storage` ajoute la détection proactive des menaces, notamment malware scanning selon les fonctionnalités activées.
 - Un `Private Endpoint` fournit une IP privée dans un subnet, mais ne désactive pas à lui seul l'endpoint public. Pour imposer un accès privé, configurer aussi `Public network access = Disabled` ou des règles réseau adaptées, ainsi que la résolution `Private DNS`.
+
+### Redondance, coût et access tiers
+
+- `LRS` conserve trois copies de données dans un seul datacenter de la région et est souvent le mode de base à retenir lorsqu'un objectif de durabilité locale suffit.
+- Les tiers `Hot`, `Cool`, `Cold` et `Archive` affectent le coût d'un stockage massif. Pour des données peu sollicités, `Access tier (default)` est la bonne zone de réglage pour réduire les coûts de stockage.
+- `Archive` est le niveau le moins cher, mais il impose une réhydratation avant lecture et l'accès est plus lent, ce qui le rend adapté aux données très rares.
+- Les règles de `Lifecycle management` doivent tenir compte du coût de lecture, de la latence de réhydratation et des pénalités de transition, pas seulement du prix par GiB.
+
+En examen, ne pas confondre `redundancy`, `backup` et `lifecycle tiering` : la redondance protège la disponibilité/durabilité, le backup fournit des points de restauration, et les access tiers optimisent le coût de données peu utilisées.
+
+Pour un compte Storage qui regroupe plusieurs services, la redondance est un réglage du compte et s'applique à l'ensemble des blobs, files, queues et tables qu'il contient. Si deux workloads ont des exigences de résilience différentes, les séparer dans des comptes distincts.
 
 ## Data Lake Storage Gen2
 
@@ -169,6 +206,9 @@ Piège d'examen : avoir un rôle sur le compte ne suffit pas toujours si une ACL
 ## Azure Files et outils
 
 - `Azure Files` fournit des `file shares` via SMB ou NFS 4.1. NFS est disponible pour les partages Premium et les clients Linux ; un même partage ne mélange pas SMB et NFS. L'accès HTTP/REST est également possible.
+- SMB utilise le port TCP `445`, qui peut être bloqué par un fournisseur d'accès ou un firewall. Pour un accès on-premises, prévoir selon le scénario un VPN Site-to-Site, un VPN Point-to-Site ou ExpressRoute.
+- Un partage NFS nécessite un compte `FileStorage` Premium et une architecture réseau adaptée ; l'accès public doit être désactivé lorsqu'il est imposé par le scénario.
+- Pour SMB, l'authentification basée sur l'identité peut utiliser AD DS, Microsoft Entra Domain Services ou Microsoft Entra Kerberos ; elle sépare l'identité de l'utilisateur des access keys du compte. Les permissions share-level et NTFS doivent toutes deux autoriser l'accès.
 - Une file share peut atteindre jusqu'à `100 TiB` et un fichier individuel jusqu'à `4 TiB` selon le type de share et les limites actuelles du service.
 - `Premium file shares` utilisent `FileStorage`, des SSD et une capacité provisionnée ; les partages Standard utilisent un support HDD et les profils `Transaction optimized`, `Hot` ou `Cool` selon le modèle de facturation. Le choix dépend de la latence, des IOPS, du débit et du coût, pas seulement du nom du tier.
 - L'accès SMB depuis on-premises utilise le port TCP `445`, souvent bloqué par un firewall ou un ISP.
@@ -176,6 +216,8 @@ Piège d'examen : avoir un rôle sur le compte ne suffit pas toujours si une ACL
 - Une `file share snapshot` est un point-in-time incrémental en lecture seule ; les snapshots sont supprimés avec la share.
 - `Soft delete` des file shares se configure au niveau du compte avec une rétention configurable ; il protège uniquement durant cette fenêtre.
 - `Azure File Sync` met en cache une Azure file share sur des Windows Servers. Un `sync group` possède un cloud endpoint et des server endpoints ; `Cloud tiering` conserve localement les données récentes. Un server endpoint doit être sur un volume NTFS enregistré et ne peut pas être le system volume. Plusieurs serveurs peuvent synchroniser le même partage, mais il faut prévoir la gestion des conflits et ne pas le traiter comme un verrouillage distribué général.
+- L'agent `Azure File Sync` s'installe sur `Windows Server`, pas sur Linux ni sur un poste client Windows. Pour remplacer un serveur perdu, installer l'agent sur un nouveau serveur, l'enregistrer et recréer le `Server Endpoint` dans le même `Sync Group` ; les données sont resynchronisées depuis le `Cloud Endpoint`.
+- Un antivirus qui ignore mal l'attribut `Offline` peut rappeler tous les fichiers hiérarchisés, saturer le cache local et augmenter la consommation réseau. Vérifier sa compatibilité avec `Cloud Tiering`.
 - `Azure Storage Explorer` est l'interface graphique multi-service.
 - Pour connecter Storage Explorer à un compte externe, connaître le storage account name et la clé de compte, souvent `key1` dans le Portal.
 - `AzCopy` est l'outil performant pour copier les données.
@@ -194,6 +236,14 @@ az storage blob upload --account-name <account> --container-name <container> --n
 azcopy copy "<source>" "https://<account>.blob.core.windows.net/<container>?<SAS>" --recursive
 ```
 
+### À retenir pour le design et la sécurité
+
+- La `Default routing tier` peut influencer le coût réseau d'un storage account : le routage via le `Microsoft global network` peut être plus coûteux qu'un routage sur Internet selon le scénario.
+- L'`encryption type` peut être modifié après création du compte, mais les options plus profondes comme `infrastructure encryption` ou les `customer-managed keys` doivent souvent être décidées au moment de la création.
+- Une règle de `Lifecycle management` qui archive les blobs après 90 jours utilise généralement l'action `tierToArchive` et le filtre `prefixMatch` pour cibler un container ou un préfixe précis.
+- La politique de restauration en `Blob versioning` n'est pas illimitée ; la rétention configurée détermine la fenêtre de restauration, même si le stockage conserve plusieurs copies sur la région.
+- `allowPublicAccess` ne transforme pas automatiquement le compte en design sécurisé ; il faut combiner l'authentification, les ACL, les règles réseau et le plan de protection des données.
+
 ## Lab
 
 1. Créer un `StorageV2` `Standard` avec `Secure transfer required`.
@@ -209,8 +259,15 @@ azcopy copy "<source>" "https://<account>.blob.core.windows.net/<container>?<SAS
 - [Storage account overview](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview)
 - [Azure Storage redundancy](https://learn.microsoft.com/en-us/azure/storage/common/storage-redundancy)
 - [Blob access tiers](https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-overview)
+- [Smart tier for Blob Storage](https://learn.microsoft.com/en-us/azure/storage/blobs/access-tiers-smart)
 - [Blob lifecycle management](https://learn.microsoft.com/en-us/azure/storage/blobs/lifecycle-management-overview)
 - [Authorize Blob data operations](https://learn.microsoft.com/en-us/azure/storage/blobs/authorize-data-operations-portal)
+- [Storage account keys](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal)
+- [Storage SAS overview](https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview)
 - [Azure Blob Storage documentation](https://learn.microsoft.com/en-us/azure/storage/blobs/)
+- [Azure Blobs backup](https://learn.microsoft.com/en-us/azure/backup/blob-backup-overview)
 - [Plan an Azure Files deployment](https://learn.microsoft.com/en-us/azure/storage/files/storage-files-planning)
+- [Azure Files identity-based authentication](https://learn.microsoft.com/en-us/azure/storage/files/storage-files-active-directory-overview)
 - [Azure Files documentation](https://learn.microsoft.com/en-us/azure/storage/files/)
+- [Azure Files backup](https://learn.microsoft.com/en-us/azure/backup/azure-file-share-backup-overview)
+- [Azure Data Lake Storage vaulted backup](https://learn.microsoft.com/en-us/azure/backup/azure-data-lake-storage-backup-overview)

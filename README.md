@@ -70,6 +70,8 @@ Le score de réussite est **700 ou plus**. L'examen évalue surtout la capacité
 - [ ] Je sais utiliser Azure CLI, PowerShell ou Bicep pour les tâches courantes.
 - [ ] Je sais diagnostiquer avec `Activity log`, `Azure Monitor` et `Network Watcher`.
 - [ ] Je connais les différences `RBAC/Policy`, `Backup/Site Recovery`, `Service endpoint/Private endpoint` et `Load Balancer/Application Gateway`.
+- [ ] Je sais choisir entre `Metrics`, `Logs`, `Activity log`, `Diagnostic settings` et `Virtual network flow logs` selon le problème à analyser.
+- [ ] Je sais distinguer `Storage Blob Data` des rôles de gestion du compte, ainsi que `VM`, `VMSS`, `App Service`, `ACI`, `Container Apps` et `AKS`.
 - [ ] J'ai refait au moins un lab de chaque module.
 
 ## Ressources officielles
@@ -84,4 +86,4 @@ Le score de réussite est **700 ou plus**. L'examen évalue surtout la capacité
 
 Les noms, options du Portal, limites, régions disponibles et versions d'API évoluent. Pour une limite ou une disponibilité, la documentation du service prime sur toute fiche de mémorisation.
 
-[Retour en haut](#guide-ultime-de-révision-az-104)
+[Retour en haut](#support-de-révision-az-104)
